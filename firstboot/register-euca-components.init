@@ -1,0 +1,66 @@
+#!/bin/sh 
+#
+# chkconfig: 2345 99 05
+# description: component registration script for Eucalyptus
+#
+
+if [ "$1" != "start" ]; then
+    exit 0
+fi
+
+if [ -f /etc/sysconfig/euca-registered ] ; then
+    exit 0
+fi
+
+# Default device
+DEV=$( /sbin/ip route show | grep ^default | cut -d ' ' -f5 )
+if [ -z "$DEV" ]; then
+   echo "Cannot determine primary network interface" >&2
+   exit 1
+fi
+IPADDR=$( /sbin/ip -4 addr show dev $DEV | tail -1 | awk '{ print $2 }' | cut -d/ -f1 )
+service sshd start
+ssh-keygen -t rsa -f ~/.ssh/id_rsa -P ""
+cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
+ssh -o StrictHostKeyChecking=no $IPADDR "exit"
+mkdir /tmp/creds
+pushd /tmp/creds
+timeout=90
+interval=5
+while [ $timeout -gt 0 ]; do
+    euca_conf --get-credentials admin.zip
+    if [ -f admin.zip ]; then
+        break;
+    fi
+    sleep $interval
+    timeout=$(( $timeout - $interval ))
+done
+
+if [ ! -f admin.zip ]; then
+    echo "CLC failed to start.  Please check logs" >&2
+    exit 1
+fi
+    
+unzip admin.zip
+sleep 1
+source /tmp/creds/eucarc
+
+# Even after we can download credentials, other pieces of the system may not be bootstrapped
+sleep 30
+euca_conf --register-walrus $IPADDR
+euca_conf --register-cluster live00 $IPADDR
+euca_conf --register-sc live00 $IPADDR
+euca_conf --register-nodes $IPADDR
+popd
+rm -rf /tmp/creds
+
+# Download new credentials after walrus registration
+mkdir home/liveuser/creds
+euca_conf --get-credentials /home/liveuser/creds/admin.zip
+pushd /home/liveuser/creds
+unzip admin.zip
+popd
+echo ". ~/creds/eucarc" >> /home/liveuser/.bashrc
+chown -R liveuser /home/liveuser/creds
+
+touch /etc/sysconfig/euca-registered

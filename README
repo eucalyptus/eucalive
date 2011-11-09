@@ -1,0 +1,17 @@
+This is a small project to create a LiveCD and LiveUSB
+for Eucalyptus based on Fedora.
+
+To create a livecd, simply run:
+
+livecd-creator -c kickstart/eucalive.ks
+
+It is also recommended that you use the --cache option
+to the above command to speed up iterative builds.
+For example:
+
+livecd-creator -c kickstart/eucalive.ks --cache /tmp/livecd-cache
+
+Note that the file under the firstboot directory are packaged as
+eucalive-firstboot in the repo.  These file are only necessary
+if you wish to rebuild the eucalive-firstboot package.
+
