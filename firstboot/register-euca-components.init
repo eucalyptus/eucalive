@@ -25,7 +25,8 @@ cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
 ssh -o StrictHostKeyChecking=no $IPADDR "exit"
 mkdir /tmp/creds
 pushd /tmp/creds
-timeout=90
+sleep 30
+timeout=300
 interval=5
 while [ $timeout -gt 0 ]; do
     euca_conf --get-credentials admin.zip
@@ -55,7 +56,7 @@ popd
 rm -rf /tmp/creds
 
 # Download new credentials after walrus registration
-mkdir home/liveuser/creds
+mkdir /home/liveuser/creds
 euca_conf --get-credentials /home/liveuser/creds/admin.zip
 pushd /home/liveuser/creds
 unzip admin.zip
